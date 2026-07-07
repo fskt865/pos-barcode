@@ -152,16 +152,33 @@ function renderBarcode(text) {
 
 /* ---- Random code ----
    8 characters, uppercase letters + digits, with the look-alike letters
-   I, L and O removed so a 0 is always zero and a 1 is always one. */
+   I, L and O removed so a 0 is always zero and a 1 is always one.
+   Guaranteed to contain at least 3 digits. */
 const LENGTH = 8;
-const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ0123456789";
+const MIN_DIGITS = 3;
+const DIGITS = "0123456789";
+const LETTERS = "ABCDEFGHJKMNPQRSTUVWXYZ";
+const ALPHABET = LETTERS + DIGITS;
+
+/* Uniform random integer in [0, max) from the crypto RNG. */
+function randInt(max) {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] % max;
+}
 
 function randomCode() {
-  const out = new Uint32Array(LENGTH);
-  crypto.getRandomValues(out);
-  let s = "";
-  for (let i = 0; i < LENGTH; i++) s += ALPHABET[out[i] % ALPHABET.length];
-  return s;
+  const chars = [];
+  // seed the minimum number of digits...
+  for (let i = 0; i < MIN_DIGITS; i++) chars.push(DIGITS[randInt(DIGITS.length)]);
+  // ...fill the rest from the full alphabet (may add more digits)...
+  for (let i = MIN_DIGITS; i < LENGTH; i++) chars.push(ALPHABET[randInt(ALPHABET.length)]);
+  // ...then shuffle so the guaranteed digits aren't always up front.
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = randInt(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
 }
 
 function generate() {
