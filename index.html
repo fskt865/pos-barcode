@@ -81,13 +81,15 @@
   .generate:hover { filter: brightness(1.06); }
   .generate:active { transform: translateY(1px); }
 
+  .issued { margin-top: 12px; text-align: center; color: var(--muted); font-size: 12px; }
+
   footer { margin-top: 26px; color: var(--muted); font-size: 12px; }
   footer code { color: var(--accent); }
 
   /* Print: only the label, black on white */
   @media print {
     body { background: #fff; padding: 0; }
-    h1, .sub, .generate, footer { display: none !important; }
+    h1, .sub, .generate, .issued, footer { display: none !important; }
     .card { border: none; box-shadow: none; max-width: none; padding: 0; }
     .label { padding: 0; }
     .label svg { height: 90px; }
@@ -105,6 +107,7 @@
     </div>
 
     <button class="generate" id="genBtn">Generate</button>
+    <div class="issued" id="issued"></div>
   </div>
 
   <footer>Encoded as <code>Code 128-B</code> · print to a label printer or scan off-screen.</footer>
@@ -178,10 +181,47 @@ function randomCode() {
   return chars.join("");
 }
 
+/* ---- Issued-code registry ----
+   Every code ever shown is remembered in this browser's localStorage, and a
+   new code is re-rolled if it has been issued before. With a ~5e11 pool the
+   retry loop practically never fires, but this makes repeats impossible on
+   this device even in principle. (Uniqueness is per browser/device.) */
+const STORAGE_KEY = "pos.issuedCodes.v1";
+
+function loadIssued() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+function saveIssued(set) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...set])); } catch {}
+}
+
+const issued = loadIssued();
+
+function uniqueCode() {
+  for (let attempt = 0; attempt < 100000; attempt++) {
+    const code = randomCode();
+    if (!issued.has(code)) return code;
+  }
+  return null; // pool effectively exhausted on this device — will not happen in practice
+}
+
+function updateIssuedLabel() {
+  const n = issued.size;
+  document.getElementById("issued").textContent =
+    n === 1 ? "1 code issued on this device" : n.toLocaleString() + " codes issued on this device";
+}
+
 function generate() {
-  const code = randomCode();
+  const code = uniqueCode();
+  if (!code) { alert("No unused codes remain on this device."); return; }
+  issued.add(code);
+  saveIssued(issued);
   document.getElementById("codeText").textContent = code;
   renderBarcode(code);
+  updateIssuedLabel();
 }
 
 document.getElementById("genBtn").addEventListener("click", generate);

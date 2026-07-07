@@ -21,12 +21,27 @@ One button. Press **Generate** (or the **Space** bar) and it produces:
 
 - An **8-character code** from an uppercase-letter + digit alphabet, using
   `crypto.getRandomValues`.
+- **3 or 4 digits** per code (chosen 50/50); the rest are letters.
 - **No look-alike characters:** the letters `I`, `L`, `O` are excluded, so a `0` is always
   zero and a `1` is always one — nothing left to confuse them with.
 - A **real, scannable Code 128-B barcode** of that code.
 
 The barcode-only view is print-friendly (browser Print → just the label prints), so it works
 with a label printer too.
+
+## No repeats
+
+Every code that appears is recorded in the browser's `localStorage`, and a new code is
+re-rolled if it has ever been issued before — so a code can never repeat. The pool is ~556
+billion codes, so in practice the re-roll never triggers; the check just makes a repeat
+impossible even in principle. A running "N codes issued" count is shown under the button.
+
+**Scope:** uniqueness is tracked **per browser/device**. If several people generate on
+different machines, each machine is repeat-free on its own, and cross-machine collisions are
+astronomically unlikely (~1 in 508 billion per pair) but not *strictly* impossible. Guaranteeing
+uniqueness across everyone at once would need a shared backend (a small database/serverless
+endpoint), which the current static GitHub Pages hosting doesn't include. Clearing browser data
+resets the local history.
 
 ## How the barcode works
 
