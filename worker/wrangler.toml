@@ -1,0 +1,10 @@
+# Optional: only needed if you deploy with the Wrangler CLI instead of the
+# Cloudflare dashboard. The dashboard route (see README.md) needs none of this.
+name = "pos-barcode-reserve"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"                 # the Worker reads env.DB
+database_name = "pos_barcode"
+database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"

@@ -182,10 +182,11 @@ function randomCode() {
 }
 
 /* ---- Issued-code registry ----
-   Every code ever shown is remembered in this browser's localStorage, and a
-   new code is re-rolled if it has been issued before. With a ~5e11 pool the
-   retry loop practically never fires, but this makes repeats impossible on
-   this device even in principle. (Uniqueness is per browser/device.) */
+   Each code is reserved in a shared backend (Cloudflare Worker + D1) so no code
+   ever repeats for anyone. localStorage is kept as a local cache and as a
+   fallback if the backend is briefly unreachable. Leave RESERVE_ENDPOINT empty
+   to run in device-only mode (still no repeats on this device). */
+const RESERVE_ENDPOINT = "";  // e.g. "https://pos-barcode-reserve.<subdomain>.workers.dev"
 const STORAGE_KEY = "pos.issuedCodes.v1";
 
 function loadIssued() {
@@ -199,29 +200,87 @@ function saveIssued(set) {
 }
 
 const issued = loadIssued();
+let lastGlobalCount = null;   // total reserved, as reported by the backend
+let busy = false;
 
-function uniqueCode() {
-  for (let attempt = 0; attempt < 100000; attempt++) {
+/* A candidate not already in our local cache (avoids re-submitting the same code). */
+function localCandidate() {
+  for (let i = 0; i < 100000; i++) {
     const code = randomCode();
     if (!issued.has(code)) return code;
   }
-  return null; // pool effectively exhausted on this device — will not happen in practice
+  return null;
 }
 
-function updateIssuedLabel() {
-  const n = issued.size;
-  document.getElementById("issued").textContent =
-    n === 1 ? "1 code issued on this device" : n.toLocaleString() + " codes issued on this device";
+/* Ask the backend to reserve a code.
+   -> "reserved" (ours) | "taken" (try another) | "offline" (no/unreachable backend). */
+async function reserveRemote(code) {
+  if (!RESERVE_ENDPOINT) return "offline";
+  try {
+    const res = await fetch(RESERVE_ENDPOINT + "/reserve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    if (res.status === 409) return "taken";
+    if (!res.ok) return "offline";
+    const data = await res.json();
+    if (typeof data.count === "number") lastGlobalCount = data.count;
+    return data.reserved ? "reserved" : "taken";
+  } catch {
+    return "offline";
+  }
 }
 
-function generate() {
-  const code = uniqueCode();
-  if (!code) { alert("No unused codes remain on this device."); return; }
-  issued.add(code);
-  saveIssued(issued);
-  document.getElementById("codeText").textContent = code;
-  renderBarcode(code);
-  updateIssuedLabel();
+function updateIssuedLabel(offline) {
+  const el = document.getElementById("issued");
+  if (!RESERVE_ENDPOINT) {
+    const n = issued.size;
+    el.textContent = (n === 1 ? "1 code" : n.toLocaleString() + " codes") + " issued on this device";
+  } else if (offline) {
+    el.textContent = issued.size.toLocaleString() + " on this device · shared server offline";
+  } else {
+    const n = lastGlobalCount != null ? lastGlobalCount : issued.size;
+    el.textContent = n.toLocaleString() + " codes issued (shared)";
+  }
+}
+
+async function generate() {
+  if (busy) return;
+  busy = true;
+  const btn = document.getElementById("genBtn");
+  btn.disabled = true;
+  try {
+    let chosen = null, offline = false;
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const candidate = localCandidate();
+      if (!candidate) break;
+      const result = await reserveRemote(candidate);
+      if (result === "reserved") { chosen = candidate; break; }
+      if (result === "offline")  { chosen = candidate; offline = true; break; }
+      // "taken": astronomically rare — loop and try a fresh candidate
+    }
+    if (!chosen) { alert("Could not obtain a unique code. Please try again."); return; }
+    issued.add(chosen);
+    saveIssued(issued);
+    document.getElementById("codeText").textContent = chosen;
+    renderBarcode(chosen);
+    updateIssuedLabel(offline);
+  } finally {
+    btn.disabled = false;
+    busy = false;
+  }
+}
+
+/* Best-effort: show the current shared count on load. */
+async function refreshCount() {
+  if (RESERVE_ENDPOINT) {
+    try {
+      const res = await fetch(RESERVE_ENDPOINT + "/count");
+      if (res.ok) { const d = await res.json(); if (typeof d.count === "number") lastGlobalCount = d.count; }
+    } catch {}
+  }
+  updateIssuedLabel(false);
 }
 
 document.getElementById("genBtn").addEventListener("click", generate);
@@ -229,6 +288,7 @@ window.addEventListener("keydown", e => {
   if (e.key === " " || e.code === "Space") { e.preventDefault(); generate(); }
 });
 
+refreshCount();
 generate();
 </script>
 </body>
