@@ -188,7 +188,7 @@ function randomCode() {
    ever repeats for anyone. localStorage is kept as a local cache and as a
    fallback if the backend is briefly unreachable. Leave RESERVE_ENDPOINT empty
    to run in device-only mode (still no repeats on this device). */
-const RESERVE_ENDPOINT = "";  // e.g. "https://pos-barcode-reserve.<subdomain>.workers.dev"
+const RESERVE_ENDPOINT = "https://pos-barcode-reserve.noahzpaskowitz.workers.dev";
 const STORAGE_KEY = "pos.issuedCodes.v1";
 
 function loadIssued() {
