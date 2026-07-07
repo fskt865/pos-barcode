@@ -14,7 +14,6 @@
     --accent: #4f9dff;
     --accent-2: #2f7be0;
     --line: #2a2f3a;
-    --ok: #35c46a;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -65,71 +64,22 @@
     padding-left: 6px; /* balance the letter-spacing */
   }
 
-  .controls {
+  .generate {
     margin-top: 22px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  button {
-    flex: 1 1 auto;
-    min-width: 120px;
-    border: 1px solid var(--line);
-    background: var(--panel-2);
-    color: var(--ink);
-    padding: 11px 14px;
-    border-radius: 10px;
-    font: inherit;
-    font-weight: 550;
-    cursor: pointer;
-    transition: transform .05s ease, background .15s ease, border-color .15s ease;
-  }
-  button:hover { background: #262b36; border-color: #3a4150; }
-  button:active { transform: translateY(1px); }
-  button.primary {
+    width: 100%;
+    border: 1px solid transparent;
     background: linear-gradient(180deg, var(--accent), var(--accent-2));
-    border-color: transparent;
     color: #fff;
-  }
-  button.primary:hover { filter: brightness(1.06); }
-
-  .options {
-    margin-top: 22px;
-    padding-top: 18px;
-    border-top: 1px solid var(--line);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px 24px;
-    color: var(--muted);
-    font-size: 13px;
-  }
-  .options label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
-  .options input[type="radio"], .options input[type="checkbox"], .options input[type="number"] { accent-color: var(--accent); }
-  .options input[type="number"] {
-    width: 58px;
-    background: var(--panel-2);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    border-radius: 8px;
-    padding: 5px 8px;
+    padding: 14px 14px;
+    border-radius: 12px;
     font: inherit;
-  }
-
-  .toast {
-    position: fixed;
-    bottom: 26px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: var(--ok);
-    color: #06210f;
+    font-size: 16px;
     font-weight: 600;
-    padding: 10px 18px;
-    border-radius: 999px;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .2s ease, transform .2s ease;
+    cursor: pointer;
+    transition: transform .05s ease, filter .15s ease;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .generate:hover { filter: brightness(1.06); }
+  .generate:active { transform: translateY(1px); }
 
   footer { margin-top: 26px; color: var(--muted); font-size: 12px; }
   footer code { color: var(--accent); }
@@ -137,7 +87,7 @@
   /* Print: only the label, black on white */
   @media print {
     body { background: #fff; padding: 0; }
-    h1, .sub, .controls, .options, footer { display: none !important; }
+    h1, .sub, .generate, footer { display: none !important; }
     .card { border: none; box-shadow: none; max-width: none; padding: 0; }
     .label { padding: 0; }
     .label svg { height: 90px; }
@@ -149,33 +99,15 @@
   <div class="sub">Random code + a real, scannable Code 128 barcode.</div>
 
   <div class="card">
-    <div class="label" id="label">
+    <div class="label">
       <svg id="barcode" viewBox="0 0 100 100" preserveAspectRatio="none" shape-rendering="crispEdges" aria-label="barcode"></svg>
       <div class="code" id="codeText">--------</div>
     </div>
 
-    <div class="controls">
-      <button class="primary" id="genBtn">Generate</button>
-      <button id="copyBtn">Copy</button>
-      <button id="printBtn">Print</button>
-    </div>
-
-    <div class="options">
-      <span>Length
-        <input type="number" id="len" min="4" max="24" value="8">
-      </span>
-      <label><input type="radio" name="cs" value="alnum" checked> A–Z 0–9</label>
-      <label><input type="radio" name="cs" value="digits"> Digits</label>
-      <label><input type="radio" name="cs" value="alpha"> Letters</label>
-      <label title="Drops I, L and O so a 0 is always zero and a 1 is always one">
-        <input type="checkbox" id="noAmbig" checked> No look-alikes
-      </label>
-    </div>
+    <button class="generate" id="genBtn">Generate</button>
   </div>
 
   <footer>Encoded as <code>Code 128-B</code> · print to a label printer or scan off-screen.</footer>
-
-  <div class="toast" id="toast">Copied</div>
 
 <script>
 "use strict";
@@ -198,7 +130,7 @@ function encode128B(text) {
   return values.map(v => PATTERNS[v]).join("");
 }
 
-/* Render a module string into the SVG as black bars on transparent (white card). */
+/* Render a module string into the SVG as black bars on the white label. */
 function renderBarcode(text) {
   const modules = encode128B(text);
   const quiet = 10;                 // required quiet zone, in modules
@@ -218,75 +150,27 @@ function renderBarcode(text) {
   svg.innerHTML = rects;
 }
 
-/* ---- Random string generation ---- */
-const CHARSETS = {
-  alnum:  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-  digits: "0123456789",
-  alpha:  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-};
+/* ---- Random code ----
+   8 characters, uppercase letters + digits, with the look-alike letters
+   I, L and O removed so a 0 is always zero and a 1 is always one. */
+const LENGTH = 8;
+const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ0123456789";
 
-/* Ambiguous letters. Dropping I, L and O means a "0" is always zero and a "1"
-   is always one — nothing left to mistake them for. Digits stay intact. */
-const AMBIGUOUS = "ILO";
-
-function activeCharset() {
-  const base = CHARSETS[selectedCharset()] || CHARSETS.alnum;
-  if (document.getElementById("noAmbig").checked) {
-    return [...base].filter(c => !AMBIGUOUS.includes(c)).join("");
-  }
-  return base;
-}
-
-function randomCode(len, set) {
-  const out = new Uint32Array(len);
+function randomCode() {
+  const out = new Uint32Array(LENGTH);
   crypto.getRandomValues(out);
   let s = "";
-  for (let i = 0; i < len; i++) s += set[out[i] % set.length];
+  for (let i = 0; i < LENGTH; i++) s += ALPHABET[out[i] % ALPHABET.length];
   return s;
 }
 
-/* ---- Wiring ---- */
-let current = "";
-
-function selectedCharset() {
-  return document.querySelector('input[name="cs"]:checked').value;
-}
-function clampedLength() {
-  const el = document.getElementById("len");
-  let n = parseInt(el.value, 10);
-  if (isNaN(n)) n = 8;
-  n = Math.max(4, Math.min(24, n));
-  el.value = n;
-  return n;
-}
-
 function generate() {
-  current = randomCode(clampedLength(), activeCharset());
-  document.getElementById("codeText").textContent = current;
-  renderBarcode(current);
-}
-
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.classList.add("show");
-  clearTimeout(toast._t);
-  toast._t = setTimeout(() => t.classList.remove("show"), 1400);
+  const code = randomCode();
+  document.getElementById("codeText").textContent = code;
+  renderBarcode(code);
 }
 
 document.getElementById("genBtn").addEventListener("click", generate);
-document.getElementById("printBtn").addEventListener("click", () => window.print());
-document.getElementById("copyBtn").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(current);
-    toast("Copied " + current);
-  } catch {
-    toast("Copy failed");
-  }
-});
-document.getElementById("len").addEventListener("change", generate);
-document.querySelectorAll('input[name="cs"]').forEach(r => r.addEventListener("change", generate));
-document.getElementById("noAmbig").addEventListener("change", generate);
 window.addEventListener("keydown", e => {
   if (e.key === " " || e.code === "Space") { e.preventDefault(); generate(); }
 });
