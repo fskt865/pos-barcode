@@ -23,13 +23,13 @@ const CORS = {
 const ALLOWED = "ABCDEFGHJKMNPQRSTUVWXYZ0123456789"; // A–Z minus I,L,O + digits
 
 function isValidCode(code) {
-  if (typeof code !== "string" || code.length !== 8) return false;
+  if (typeof code !== "string" || code.length < 8 || code.length > 12) return false;
   let digits = 0;
   for (const ch of code) {
     if (!ALLOWED.includes(ch)) return false;
     if (ch >= "0" && ch <= "9") digits++;
   }
-  return digits === 3 || digits === 4; // matches the generator's format
+  return digits >= 3 && digits <= 5; // matches the generator's format
 }
 
 export default {

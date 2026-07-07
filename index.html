@@ -154,10 +154,11 @@ function renderBarcode(text) {
 }
 
 /* ---- Random code ----
-   8 characters, uppercase letters + digits, with the look-alike letters
+   8–12 characters, uppercase letters + digits, with the look-alike letters
    I, L and O removed so a 0 is always zero and a 1 is always one.
-   Contains 3 or 4 digits (chosen 50/50); the remaining slots are letters. */
-const LENGTH = 8;
+   Contains 3–5 digits; the remaining characters are letters. */
+const MIN_LEN = 8, MAX_LEN = 12;
+const MIN_DIGITS = 3, MAX_DIGITS = 5;
 const DIGITS = "0123456789";
 const LETTERS = "ABCDEFGHJKMNPQRSTUVWXYZ";
 
@@ -169,10 +170,11 @@ function randInt(max) {
 }
 
 function randomCode() {
-  const numDigits = 3 + randInt(2);   // 3 or 4
+  const length    = MIN_LEN + randInt(MAX_LEN - MIN_LEN + 1);          // 8–12
+  const numDigits = MIN_DIGITS + randInt(MAX_DIGITS - MIN_DIGITS + 1); // 3–5 (always <= length)
   const chars = [];
   for (let i = 0; i < numDigits; i++) chars.push(DIGITS[randInt(DIGITS.length)]);
-  for (let i = numDigits; i < LENGTH; i++) chars.push(LETTERS[randInt(LETTERS.length)]);
+  for (let i = numDigits; i < length; i++) chars.push(LETTERS[randInt(LETTERS.length)]);
   // Fisher–Yates shuffle so the digits land in random positions.
   for (let i = chars.length - 1; i > 0; i--) {
     const j = randInt(i + 1);
