@@ -104,7 +104,7 @@
     font-size: 13px;
   }
   .options label { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
-  .options input[type="radio"], .options input[type="number"] { accent-color: var(--accent); }
+  .options input[type="radio"], .options input[type="checkbox"], .options input[type="number"] { accent-color: var(--accent); }
   .options input[type="number"] {
     width: 58px;
     background: var(--panel-2);
@@ -167,6 +167,9 @@
       <label><input type="radio" name="cs" value="alnum" checked> A–Z 0–9</label>
       <label><input type="radio" name="cs" value="digits"> Digits</label>
       <label><input type="radio" name="cs" value="alpha"> Letters</label>
+      <label title="Drops I, L and O so a 0 is always zero and a 1 is always one">
+        <input type="checkbox" id="noAmbig" checked> No look-alikes
+      </label>
     </div>
   </div>
 
@@ -222,8 +225,19 @@ const CHARSETS = {
   alpha:  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
 };
 
-function randomCode(len, setKey) {
-  const set = CHARSETS[setKey] || CHARSETS.alnum;
+/* Ambiguous letters. Dropping I, L and O means a "0" is always zero and a "1"
+   is always one — nothing left to mistake them for. Digits stay intact. */
+const AMBIGUOUS = "ILO";
+
+function activeCharset() {
+  const base = CHARSETS[selectedCharset()] || CHARSETS.alnum;
+  if (document.getElementById("noAmbig").checked) {
+    return [...base].filter(c => !AMBIGUOUS.includes(c)).join("");
+  }
+  return base;
+}
+
+function randomCode(len, set) {
   const out = new Uint32Array(len);
   crypto.getRandomValues(out);
   let s = "";
@@ -247,7 +261,7 @@ function clampedLength() {
 }
 
 function generate() {
-  current = randomCode(clampedLength(), selectedCharset());
+  current = randomCode(clampedLength(), activeCharset());
   document.getElementById("codeText").textContent = current;
   renderBarcode(current);
 }
@@ -272,6 +286,7 @@ document.getElementById("copyBtn").addEventListener("click", async () => {
 });
 document.getElementById("len").addEventListener("change", generate);
 document.querySelectorAll('input[name="cs"]').forEach(r => r.addEventListener("change", generate));
+document.getElementById("noAmbig").addEventListener("change", generate);
 window.addEventListener("keydown", e => {
   if (e.key === " " || e.code === "Space") { e.preventDefault(); generate(); }
 });

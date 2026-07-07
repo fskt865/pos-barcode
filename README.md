@@ -18,6 +18,8 @@ powershell -ExecutionPolicy Bypass -File serve.ps1 8777
 - Auto-generates on load; **Generate** (or press **Space**) for a new code.
 - **Copy** the string, **Print** just the label (styled for label printers).
 - Options: length (4–24) and character set (A–Z 0–9 / digits / letters).
+- **No look-alikes** (on by default): drops the letters `I`, `L`, `O`, so a `0` is always
+  zero and a `1` is always one — nothing left to confuse them with.
 - Uses `crypto.getRandomValues` for the random string.
 
 ## How the barcode works
