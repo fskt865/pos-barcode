@@ -3,24 +3,30 @@
 Generates a random alphanumeric code and renders a **real, scannable Code 128-B barcode**
 underneath it. Single self-contained HTML file — no dependencies, no build step, works offline.
 
+**Live site:** https://fskt865.github.io/pos-barcode/
+
 ## Use
 
-Double-click **`index.html`** (runs straight from `file://`). Or, to scan it from a phone on
-your LAN, serve it:
+Just open the live site above, or double-click **`index.html`** locally (runs straight from
+`file://`). To scan it from a phone on your LAN, serve it:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File serve.ps1 8777
 # then open http://localhost:8777  (or http://<this-pc-ip>:8777 from your phone)
 ```
 
-## Features
+## What it does
 
-- Auto-generates on load; **Generate** (or press **Space**) for a new code.
-- **Copy** the string, **Print** just the label (styled for label printers).
-- Options: length (4–24) and character set (A–Z 0–9 / digits / letters).
-- **No look-alikes** (on by default): drops the letters `I`, `L`, `O`, so a `0` is always
+One button. Press **Generate** (or the **Space** bar) and it produces:
+
+- An **8-character code** from an uppercase-letter + digit alphabet, using
+  `crypto.getRandomValues`.
+- **No look-alike characters:** the letters `I`, `L`, `O` are excluded, so a `0` is always
   zero and a `1` is always one — nothing left to confuse them with.
-- Uses `crypto.getRandomValues` for the random string.
+- A **real, scannable Code 128-B barcode** of that code.
+
+The barcode-only view is print-friendly (browser Print → just the label prints), so it works
+with a label printer too.
 
 ## How the barcode works
 
